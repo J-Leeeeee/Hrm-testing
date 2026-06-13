@@ -1,0 +1,6 @@
+data_path: data/sudoku-extreme-1k-aug-1000
+output_dir: data/controlled_sudoku
+blank_counts: [1, 2, 5, 10, 20, 40]
+seed: 0
+max_attempts: 50
+

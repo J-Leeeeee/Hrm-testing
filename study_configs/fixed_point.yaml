@@ -1,0 +1,6 @@
+checkpoint: checkpoints/sudoku_extreme_hf/checkpoint
+data_path: data/sudoku-extreme-1k-aug-1000
+controlled_root: data/controlled_sudoku
+batch_size: 384
+output: results/fixed_point.csv
+

@@ -1,0 +1,7 @@
+checkpoint: checkpoints/sudoku_extreme_hf/checkpoint
+data_path: data/sudoku-extreme-1k-aug-1000
+controlled_root: data/controlled_sudoku
+vote_counts: [1, 3, 5, 10]
+batch_size: null
+seed: 0
+output: results/voting.csv

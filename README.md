@@ -1,3 +1,86 @@
+# Fixed-Point Failure Modes and Test-Time Voting in HRM Sudoku
+
+This fork adds a reproducible experiment suite on top of the upstream
+Hierarchical Reasoning Model (HRM) Sudoku code. The study asks whether HRM
+solves Sudoku robustly or can settle into stable wrong fixed points, and
+whether test-time Sudoku-preserving transforms plus voting reduce those
+failures.
+
+The MVP uses the official Sudoku-Extreme checkpoint rather than training from
+scratch. Run the experiment scripts on a Linux CUDA machine or CUDA-enabled
+WSL; local CPU-only runs are useful only for the unit tests.
+
+## Study Setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip packaging ninja wheel setuptools setuptools-scm
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+pip install flash-attn --no-build-isolation
+pip install -r requirements.txt
+pip install -r requirements-study.txt
+
+huggingface-cli download sapientinc/HRM-checkpoint-sudoku-extreme --local-dir checkpoints/sudoku_extreme_hf
+python dataset/build_sudoku_dataset.py --output-dir data/sudoku-extreme-1k-aug-1000 --subsample-size 1000 --num-aug 1000
+```
+
+Smoke-test the official checkpoint:
+
+```bash
+DISABLE_COMPILE=1 OMP_NUM_THREADS=8 python evaluate.py checkpoint=checkpoints/sudoku_extreme_hf/checkpoint
+```
+
+## Study Commands
+
+```bash
+python -m pytest
+
+python experiments/baseline_eval.py \
+  --checkpoint checkpoints/sudoku_extreme_hf/checkpoint \
+  --limit 32 \
+  --batch-size 32
+
+python experiments/make_controlled_sudoku.py --limit 64
+
+python experiments/baseline_eval.py \
+  --checkpoint checkpoints/sudoku_extreme_hf/checkpoint \
+  --controlled-root data/controlled_sudoku \
+  --limit 64 \
+  --batch-size 32 \
+  --output results/controlled_baseline.csv
+
+python experiments/fixed_point_diagnostics.py \
+  --checkpoint checkpoints/sudoku_extreme_hf/checkpoint \
+  --controlled-root data/controlled_sudoku \
+  --limit 64 \
+  --batch-size 32
+
+python experiments/test_time_voting.py \
+  --checkpoint checkpoints/sudoku_extreme_hf/checkpoint \
+  --controlled-root data/controlled_sudoku \
+  --votes 3 \
+  --limit 16
+
+python experiments/plot_results.py \
+  --baseline results/controlled_baseline.csv \
+  --fixed-point results/fixed_point.csv \
+  --voting results/voting.csv
+```
+
+Core outputs:
+
+- `results/baseline.csv` or `results/controlled_baseline.csv`: exact accuracy, cell accuracy, validity, clue violations, runtime.
+- `results/fixed_point.csv`: first prediction, refeed outcome, stable wrong and invalid fixed-point rates.
+- `results/voting.csv`: single-run, majority-vote, and candidate-rerank performance for each vote count.
+- `figures/`: accuracy by blanks, fixed-point outcomes, voting accuracy/runtime plots.
+
+Token convention used throughout the study: `PAD=0`, blank Sudoku cell
+`0 -> token 1`, and digit `d -> token d+1`.
+
+See [report.md](report.md) for the project report template and final-writeup
+structure.
+
 # Hierarchical Reasoning Model
 
 ![](./assets/hrm.png)
