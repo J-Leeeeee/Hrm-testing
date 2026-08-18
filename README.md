@@ -1,16 +1,45 @@
 # Fixed-Point Failure Modes and Test-Time Voting in HRM Sudoku
 
-This fork adds a reproducible experiment suite on top of the upstream
-Hierarchical Reasoning Model (HRM) Sudoku code. The study asks whether HRM
-solves Sudoku robustly or can settle into stable wrong fixed points, and
-whether test-time Sudoku-preserving transforms plus voting reduce those
-failures.
+This research fork evaluates the released 27M-parameter Hierarchical Reasoning
+Model (HRM) on controlled Sudoku perturbations. It tests two questions: whether
+HRM's solutions remain stable when fed back into the model, and whether
+Sudoku-preserving test-time transformations can improve exact-match accuracy.
 
-The MVP uses the official Sudoku-Extreme checkpoint rather than training from
-scratch. Run the experiment scripts on a Linux CUDA machine or CUDA-enabled
-WSL; local CPU-only runs are useful only for the unit tests.
+## Headline Results
 
-## Study Setup
+The main evaluation uses the official Sudoku-Extreme checkpoint and 6,000
+controlled puzzles: 1,000 uniquely solvable boards at each of six missing-cell
+counts. These are controlled distribution-shift tests, not conventional Sudoku
+difficulty categories.
+
+| Missing cells | 1 | 2 | 5 | 10 | 20 | 40 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Exact-match accuracy | 9.0% | 16.6% | 56.7% | 92.5% | 96.9% | 100.0% |
+| Invalid-output rate | 91.0% | 83.4% | 43.3% | 7.5% | 3.1% | 0.0% |
+
+- A second inference pass regressed 3,486 of 3,717 initially correct boards
+  (**93.8%**) while correcting only 14 of 2,283 initial errors (**0.6%**).
+- Of the initial errors, 168 (**7.4%**) were unchanged invalid fixed points
+  under the second pass.
+- In a preliminary 96-puzzle test, three-way transformation voting increased
+  exact-match accuracy from **62.5%** for a single run to **70.8%** with
+  majority voting and **76.0%** with validity-aware reranking. This pilot result
+  is reported separately from the 6,000-puzzle baseline and refeed studies.
+
+![Accuracy and invalid-output rate by missing-cell count](figures/accuracy_by_blanks.png)
+
+![Outcomes after feeding predictions back into HRM](figures/fixed_point_failures.png)
+
+The reversal across missing-cell counts suggests strong sensitivity to the
+checkpoint's input distribution. It should not be interpreted as evidence that
+Sudoku intrinsically becomes easier when more cells are removed. See
+[report.md](report.md) for methods, definitions, limitations, and complete
+results.
+
+## Reproducing the Study
+
+Run inference on a Linux CUDA machine or CUDA-enabled WSL. CPU-only environments
+are sufficient for the unit tests but not checkpoint inference.
 
 ```bash
 python -m venv .venv
@@ -31,55 +60,65 @@ Smoke-test the official checkpoint:
 DISABLE_COMPILE=1 OMP_NUM_THREADS=8 python evaluate.py checkpoint=checkpoints/sudoku_extreme_hf/checkpoint
 ```
 
-## Study Commands
+Build the controlled datasets and reproduce the reported runs:
 
 ```bash
 python -m pytest
 
-python experiments/baseline_eval.py \
-  --checkpoint checkpoints/sudoku_extreme_hf/checkpoint \
-  --limit 32 \
-  --batch-size 32
-
-python experiments/make_controlled_sudoku.py --limit 64
+python experiments/make_controlled_sudoku.py --limit 1000
 
 python experiments/baseline_eval.py \
   --checkpoint checkpoints/sudoku_extreme_hf/checkpoint \
   --controlled-root data/controlled_sudoku \
-  --limit 64 \
   --batch-size 32 \
   --output results/controlled_baseline.csv
 
 python experiments/fixed_point_diagnostics.py \
   --checkpoint checkpoints/sudoku_extreme_hf/checkpoint \
   --controlled-root data/controlled_sudoku \
-  --limit 64 \
-  --batch-size 32
+  --batch-size 32 \
+  --output results/fixed_point.csv
 
 python experiments/test_time_voting.py \
   --checkpoint checkpoints/sudoku_extreme_hf/checkpoint \
   --controlled-root data/controlled_sudoku \
   --votes 3 \
-  --limit 16
+  --limit 16 \
+  --output results/voting_n16_v3.csv
 
 python experiments/plot_results.py \
   --baseline results/controlled_baseline.csv \
   --fixed-point results/fixed_point.csv \
-  --voting results/voting.csv
+  --voting results/voting_n16_v3.csv
 ```
 
-Core outputs:
+The inference scripts are deterministic for a fixed checkpoint, dataset, and
+seed. Core artifacts are:
 
 - `results/baseline.csv` or `results/controlled_baseline.csv`: exact accuracy, cell accuracy, validity, clue violations, runtime.
 - `results/fixed_point.csv`: first prediction, refeed outcome, stable wrong and invalid fixed-point rates.
-- `results/voting.csv`: single-run, majority-vote, and candidate-rerank performance for each vote count.
-- `figures/`: accuracy by blanks, fixed-point outcomes, voting accuracy/runtime plots.
+- `results/voting_n16_v3.csv`: preliminary single-run, majority-vote, and
+  validity-aware reranking results.
+- `figures/`: publication-ready accuracy, fixed-point, and voting-pilot plots.
 
 Token convention used throughout the study: `PAD=0`, blank Sudoku cell
 `0 -> token 1`, and digit `d -> token d+1`.
 
-See [report.md](report.md) for the project report template and final-writeup
-structure.
+## Scope and Attribution
+
+The HRM architecture, training pipeline, original datasets, and released
+checkpoint come from [Sapient Intelligence's upstream HRM
+repository](https://github.com/sapientinc/HRM). This fork adds the controlled
+Sudoku generators, evaluation and transformation-voting experiments, metrics,
+tests, result tables, plots, and study report. The upstream Apache 2.0 license
+is retained.
+
+---
+
+## Upstream Project Documentation
+
+The original HRM project README is preserved below for architecture, training,
+and dataset documentation.
 
 # Hierarchical Reasoning Model
 

@@ -82,7 +82,11 @@ def main() -> None:
     rows: list[dict[str, object]] = []
     for dataset_name, blank_count, dataset in dataset_specs(args):
         for vote_count in vote_counts:
+            n_examples = len(dataset.inputs)
+            print(f"Starting {dataset_name} votes={vote_count} n={n_examples}", flush=True)
             for example_id, (inp, label, puzzle_id) in enumerate(zip(dataset.inputs, dataset.labels, dataset.puzzle_identifiers)):
+                if example_id > 0 and example_id % 50 == 0:
+                    print(f"  {dataset_name} votes={vote_count} {example_id}/{n_examples}", flush=True)
                 predictions, elapsed_ms = run_one_puzzle(
                     runner,
                     inp,
@@ -115,6 +119,8 @@ def main() -> None:
                             "seed": args.seed,
                         }
                     )
+            write_csv(args.output, rows)
+            print(f"Checkpointed {len(rows)} rows after {dataset_name} votes={vote_count}", flush=True)
 
     write_csv(args.output, rows)
     print_summary(rows, group_key="method")
