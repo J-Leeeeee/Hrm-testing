@@ -7,11 +7,10 @@
 # data
 /data/
 
-# Local study planning and superseded pilot outputs
+# Local study planning and superseded n=64 pilots
 /PLAN.md
 /TIMELINE.md
 /results/*_n64.csv
-/results/voting.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

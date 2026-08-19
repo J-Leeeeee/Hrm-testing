@@ -17,30 +17,29 @@ clear runtime cost?
 - Refeed first predictions into HRM and classify outcomes as `stable_correct`,
   `stable_wrong`, `invalid_fixed_point`, `became_correct`, `became_wrong`, or
   `changed_wrong`.
-- In a preliminary experiment, run three-way test-time voting with
-  Sudoku-preserving digit, row, column, and transpose transforms on 16 puzzles
-  per missing-cell count.
+- Run test-time voting with Sudoku-valid digit, row, column, and transpose
+  transforms for `1, 3, 5, 10` transformed runs on the same 6,000 boards.
 
 ## Results
 
-The one-pass baseline and fixed-point refeed experiments each used **1,000
-puzzles per missing-cell count** (**6,000 puzzles total**). The preliminary
-voting experiment used **16 puzzles per missing-cell count** (**96 puzzles**) and
-three transformed runs per puzzle. Sample sizes are kept explicit because the
-voting estimate is much less precise than the main results.
+Full-run measurements with **n=1000 puzzles per blank count**. One-pass baseline
+and fixed-point refeed used **6,000 puzzles**. Voting used the same 6,000 puzzles
+with **1, 3, 5, 10** Sudoku-preserving votes and methods `single` / `majority` /
+`rerank` (**72,000 rows**).
 
 | Experiment | Key result |
 | --- | --- |
 | Controlled one-pass evaluation | Pooled exact-match accuracy was **62.0%**, cell accuracy was **93.4%**, and the invalid-output rate was **38.1%** across 6,000 boards. |
 | Missing-cell perturbation | Exact-match accuracy rose from **9.0%** (1 missing cell) through **16.6%**, **56.7%**, **92.5%**, and **96.9%** to **100.0%** (40 missing cells). Invalid outputs fell from **91.0%** to **0.0%** over the same range. |
 | Fixed-point refeed | Of 3,717 initially exact boards, **3,486 (93.8%)** became wrong after one refeed. Of 2,283 initial errors, only **14 (0.6%)** became correct; **168 (7.4%)** were unchanged invalid fixed points. Across all boards, outcomes were 58.1% `became_wrong`, 35.0% `changed_wrong`, 3.8% `stable_correct`, 2.8% `invalid_fixed_point`, and 0.2% `became_correct`. |
-| Preliminary test-time voting | On 96 puzzles with three transformed runs, exact match was **62.5%** for the single prediction, **70.8%** for majority voting, and **76.0%** for validity-aware reranking. The shared three-run inference averaged **427 ms/puzzle**, compared with **16.6 ms/puzzle** for the earlier 32-puzzle batched pilot baseline; this observed 26× wall-clock ratio combines extra test-time inference with different batching strategies. |
+| Test-time voting | Pooled over vote counts, exact match was **single 62.0%**, **majority 78.7%**, **rerank 77.5%**. At 3 votes: single 62.0%, majority 68.9%, rerank 75.9%. At 10 votes: single 62.0%, majority 98.9%, rerank 90.2%. Mean **420 ms/puzzle** (399–435 ms across 1–10 votes; runner padded to batch size 10), about **22×** the batched one-pass baseline (18.9 ms). |
 
 Figures:
 
 - `figures/accuracy_by_blanks.png`
 - `figures/fixed_point_failures.png`
 - `figures/voting_vs_accuracy.png`
+- `figures/voting_runtime.png`
 
 ## Limitations
 
@@ -53,11 +52,11 @@ Figures:
   clues are removed.
 - The uniqueness check is capped at 50 attempts per source board. All generated
   boards used here were classified as unique within that procedure.
-- The voting result is preliminary (`n=96`) and should not be presented as if it
-  had the same precision as the 6,000-board baseline and refeed studies.
-- The reported voting wall-clock ratio compares per-puzzle transformed inference
-  with a separately batched baseline, so it is an observed system-level cost,
-  not an isolated estimate of transformation overhead.
+- Voting increases test-time compute relative to a batched one-pass decode.
+  The reported ~22× wall-clock ratio compares per-puzzle transformed inference
+  (padded to batch size 10) with a separately batched baseline, so it is an
+  observed system-level cost, not an isolated estimate of transformation
+  overhead.
 
 ## Reproducibility
 
@@ -66,7 +65,7 @@ python -m pytest
 python experiments/make_controlled_sudoku.py --limit 1000
 python experiments/baseline_eval.py --checkpoint checkpoints/sudoku_extreme_hf/checkpoint --controlled-root data/controlled_sudoku --output results/controlled_baseline.csv
 python experiments/fixed_point_diagnostics.py --checkpoint checkpoints/sudoku_extreme_hf/checkpoint --controlled-root data/controlled_sudoku
-python experiments/test_time_voting.py --checkpoint checkpoints/sudoku_extreme_hf/checkpoint --controlled-root data/controlled_sudoku --votes 3 --limit 16 --output results/voting_n16_v3.csv
-python experiments/plot_results.py --baseline results/controlled_baseline.csv --fixed-point results/fixed_point.csv --voting results/voting_n16_v3.csv
+python experiments/test_time_voting.py --checkpoint checkpoints/sudoku_extreme_hf/checkpoint --controlled-root data/controlled_sudoku --vote-counts 1,3,5,10 --limit 1000 --output results/voting.csv
+python experiments/plot_results.py --baseline results/controlled_baseline.csv --fixed-point results/fixed_point.csv --voting results/voting.csv
 ```
 

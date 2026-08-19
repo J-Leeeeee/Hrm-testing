@@ -7,12 +7,9 @@ and generated puzzle arrays are excluded from the repository.
 | --- | --- | ---: |
 | `controlled_baseline.csv` | One-pass evaluation, 1,000 puzzles at each of six missing-cell counts | 6,000 |
 | `fixed_point.csv` | One-pass plus prediction-refeed outcomes on the same controlled sets | 6,000 |
-| `voting_n16_v3.csv` | Three-run voting pilot, 96 puzzles recorded once for each of three selection methods | 288 |
+| `voting.csv` | Test-time voting on the same 6,000 boards at 1, 3, 5, and 10 votes, recorded for `single`, `majority`, and `rerank` | 72,000 |
+| `voting_n16_v3.csv` | Superseded 96-puzzle, 3-vote pilot. Do not cite as the main voting result. | 288 |
 
-The main baseline and fixed-point CSVs support the claims in the repository
-README and `report.md`. The smaller voting CSV is deliberately labeled as a
-pilot and should not be treated as a 6,000-puzzle result.
-
-Large or interrupted voting sweeps use the local `voting.csv` filename, which
-is ignored until a complete run has been validated and intentionally promoted
-to a versioned result artifact.
+`controlled_baseline.csv`, `fixed_point.csv`, and `voting.csv` are the artifacts
+behind the claims in the repository README and `report.md`. Pilot CSVs named
+`*_n64.csv` stay local and gitignored.
